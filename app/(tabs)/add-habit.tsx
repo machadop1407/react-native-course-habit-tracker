@@ -1,9 +1,8 @@
-import { DATABASE_ID, databases, HABITS_COLLECTION_ID } from "@/lib/appwrite";
 import { useAuth } from "@/lib/auth-context";
+import { useCreateHabit } from "@/lib/queries";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { ID } from "react-native-appwrite";
 import {
   Button,
   SegmentedButtons,
@@ -14,6 +13,7 @@ import {
 
 const FREQUENCIES = ["daily", "weekly", "monthly"];
 type Frequency = (typeof FREQUENCIES)[number];
+
 export default function AddHabitScreen() {
   const [title, setTitle] = useState<string>("");
   const [description, setDescription] = useState<string>("");
@@ -22,25 +22,18 @@ export default function AddHabitScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const theme = useTheme();
+  const createHabit = useCreateHabit();
 
   const handleSubmit = async () => {
     if (!user) return;
 
     try {
-      await databases.createDocument(
-        DATABASE_ID,
-        HABITS_COLLECTION_ID,
-        ID.unique(),
-        {
-          user_id: user.$id,
-          title,
-          description,
-          frequency,
-          streak_count: 0,
-          last_completed: new Date().toISOString(),
-          created_at: new Date().toISOString(),
-        }
-      );
+      await createHabit.mutateAsync({
+        user_id: user.$id,
+        title,
+        description,
+        frequency,
+      });
 
       router.back();
     } catch (error) {
@@ -80,7 +73,8 @@ export default function AddHabitScreen() {
       <Button
         mode="contained"
         onPress={handleSubmit}
-        disabled={!title || !description}
+        disabled={!title || !description || createHabit.isPending}
+        loading={createHabit.isPending}
       >
         Add Habit
       </Button>
